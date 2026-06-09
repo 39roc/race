@@ -27,11 +27,14 @@ export class BullMq implements MessageQueue {
       async (job) => { await handler(job.data as ConfirmEvent); },
       { connection: this.connection, concurrency: 16 },
     );
+    // Redis 연결 오류 시 'error' 이벤트 미처리로 프로세스가 죽지 않도록 가드.
+    this.worker.on('error', () => {});
     await this.worker.waitUntilReady();
   }
 
   async close(): Promise<void> {
-    await this.worker?.close();
+    // 큐를 먼저 닫아 신규 publish를 막고, 워커가 진행 중 작업을 마치게 한다.
     await this.queue.close();
+    await this.worker?.close();
   }
 }

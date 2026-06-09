@@ -26,11 +26,16 @@ export async function assertRoundTrip(mq: MessageQueue): Promise<void> {
 /** 핸들러가 처음 실패해도 재시도로 결국 성공 처리된다(at-least-once). */
 export async function assertRetry(mq: MessageQueue): Promise<void> {
   let attempts = 0;
-  await mq.subscribe(async () => {
+  const receivedIds: string[] = [];
+  await mq.subscribe(async (e) => {
     attempts++;
+    receivedIds.push(e.reservationId);
     if (attempts < 2) throw new Error('inject fail');
   });
   await mq.publish(sampleEvent('retry-1'));
   await waitFor(() => attempts >= 2);
   expect(attempts).toBeGreaterThanOrEqual(2);
+  // 재시도가 "같은 메시지"의 재전달임을 확인(서로 다른 메시지 2건이 아님).
+  // Kafka/BullMQ 어느 쪽이든 동일 슈트로 공정하게 검증되도록 메시지 동일성까지 단언한다.
+  expect(receivedIds.every((id) => id === 'retry-1')).toBe(true);
 }
