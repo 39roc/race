@@ -26,8 +26,13 @@ async function main(): Promise<void> {
 
   app.post('/reserve', async (req, res) => {
     const { eventId, userId } = req.body as { eventId: string; userId: string };
-    const result = await service.reserve(eventId, userId);
-    res.status(result.status === 'RESERVED' ? 201 : 409).json(result);
+    try {
+      const result = await service.reserve(eventId, userId);
+      res.status(result.status === 'RESERVED' ? 201 : 409).json(result);
+    } catch (e) {
+      // 예약 처리 중 예외(예: 락 획득 타임아웃)가 프로세스를 죽이지 않도록 500으로 응답.
+      res.status(500).json({ status: 'ERROR', message: (e as Error).message });
+    }
   });
 
   const port = Number(process.env.PORT ?? 3000);

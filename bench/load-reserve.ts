@@ -1,9 +1,17 @@
-import { request } from 'undici';
+import { request, Agent, setGlobalDispatcher } from 'undici';
 
 const BASE = process.env.BASE ?? 'http://localhost:3000';
 const STOCK = Number(process.env.STOCK ?? 100);
 const N = Number(process.env.N ?? 1000);
+// 동시에 열어두는 최대 연결 수. N개 요청을 이 풀로 다중화한다.
+const CONNECTIONS = Number(process.env.CONNECTIONS ?? 200);
 const EVENT = process.env.EVENT ?? `bench-${STOCK}-${N}`;
+
+// 실제 부하 테스트처럼 keep-alive 연결 풀로 다중화한다.
+// (N개 raw 동시 연결을 한꺼번에 열면 클라이언트 측 EPIPE/ECONNRESET가 발생한다.)
+setGlobalDispatcher(
+  new Agent({ connections: CONNECTIONS, pipelining: 1, keepAliveTimeout: 10_000, keepAliveMaxTimeout: 10_000 }),
+);
 
 async function post(path: string, body: unknown): Promise<{ status: number; ms: number }> {
   const start = performance.now();
