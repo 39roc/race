@@ -5,8 +5,8 @@ import { MetricsStore } from './metrics/metrics-store.js';
 
 async function main(): Promise<void> {
   const redis = makeRedis(process.env.REDIS_URL ?? 'redis://localhost:6379');
-  const mq = makeMq(process.env.MQ ?? 'bullmq', redis);
   const metrics = new MetricsStore();
+  const mq = makeMq(process.env.MQ ?? 'bullmq', redis, () => metrics.recordDlq());
   const failRate = Number(process.env.FAIL_RATE ?? 0);
 
   const worker = new ConsumerWorker(mq, metrics, failRate);

@@ -2,6 +2,7 @@ import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import type { ConcurrencyStrategy } from './strategies/strategy.js';
 import type { MessageQueue } from './mq/message-queue.js';
+import type { ConfirmEvent } from './domain/types.js';
 import { NaiveStrategy } from './strategies/naive.js';
 import { DbAtomicStrategy } from './strategies/db-atomic.js';
 import { DbPessimisticStrategy } from './strategies/db-pessimistic.js';
@@ -23,10 +24,10 @@ export function makeStrategy(name: string, pool: Pool, redis: Redis): Concurrenc
   }
 }
 
-export function makeMq(name: string, redis: Redis): MessageQueue {
+export function makeMq(name: string, redis: Redis, onDeadLetter?: (event: ConfirmEvent) => void): MessageQueue {
   switch (name) {
-    case 'bullmq': return new BullMq(redis.options, 'main');
-    case 'kafka': return new KafkaMq((process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','), 'main');
+    case 'bullmq': return new BullMq(redis.options, 'main', onDeadLetter);
+    case 'kafka': return new KafkaMq((process.env.KAFKA_BROKERS ?? 'localhost:9092').split(','), 'main', onDeadLetter);
     default: throw new Error(`unknown MQ: ${name}`);
   }
 }

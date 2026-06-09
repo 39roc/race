@@ -7,7 +7,11 @@ export class BullMq implements MessageQueue {
   private worker?: Worker;
   private readonly queueName: string;
 
-  constructor(private readonly connection: RedisOptions, name = 'confirm') {
+  constructor(
+    private readonly connection: RedisOptions,
+    name = 'confirm',
+    private readonly onDeadLetter?: (event: ConfirmEvent) => void,
+  ) {
     this.queueName = `confirm-${name}`;
     this.queue = new Queue(this.queueName, { connection });
   }
@@ -29,6 +33,12 @@ export class BullMq implements MessageQueue {
     );
     // Redis 연결 오류 시 'error' 이벤트 미처리로 프로세스가 죽지 않도록 가드.
     this.worker.on('error', () => {});
+    this.worker.on('failed', (job) => {
+      // 마지막 시도까지 실패해 더 이상 재시도가 없을 때만 DLQ로 간주
+      if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+        this.onDeadLetter?.(job.data as ConfirmEvent);
+      }
+    });
     await this.worker.waitUntilReady();
   }
 

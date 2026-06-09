@@ -13,7 +13,11 @@ export class KafkaMq implements MessageQueue {
   private readonly groupId: string;
   private readonly attempts = new Map<string, number>();
 
-  constructor(brokers: string[], suffix = 'main') {
+  constructor(
+    brokers: string[],
+    suffix = 'main',
+    private readonly onDeadLetter?: (event: ConfirmEvent) => void,
+  ) {
     this.kafka = new Kafka({ clientId: 'ticket', brokers });
     this.producer = this.kafka.producer();
     this.topic = `confirm-${suffix}`;
@@ -50,6 +54,7 @@ export class KafkaMq implements MessageQueue {
               messages: [{ key, value: message.value }],
             });
             this.attempts.delete(key);
+            this.onDeadLetter?.(event);
           } else {
             throw e; // 커밋 안 됨 → kafkajs가 같은 메시지 재처리
           }
