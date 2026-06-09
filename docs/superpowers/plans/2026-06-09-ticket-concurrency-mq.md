@@ -143,7 +143,7 @@ MQ=bullmq
 # 컨슈머 실패 주입 확률 (0~1)
 FAIL_RATE=0
 PORT=3000
-PG_URL=postgres://ticket:ticket@localhost:5432/ticket
+PG_URL=postgres://ticket:ticket@localhost:5433/ticket
 REDIS_URL=redis://localhost:6379
 KAFKA_BROKERS=localhost:9092
 ```
@@ -177,28 +177,33 @@ services:
       POSTGRES_USER: ticket
       POSTGRES_PASSWORD: ticket
       POSTGRES_DB: ticket
-    ports: ["5432:5432"]
+    ports: ["5433:5432"]   # 호스트 5432 충돌 회피
   redis:
     image: redis:7
     ports: ["6379:6379"]
   kafka:
-    image: bitnami/kafka:3.7
+    image: apache/kafka:3.7.0   # bitnami/kafka는 Docker Hub 배포 중단됨 → 공식 이미지 사용
     ports: ["9092:9092"]
     environment:
-      KAFKA_CFG_NODE_ID: "0"
-      KAFKA_CFG_PROCESS_ROLES: controller,broker
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # 듀얼 리스너: 호스트(localhost:9092)와 컨테이너 내부(kafka:19092) 모두 접속 가능
+      KAFKA_LISTENERS: PLAINTEXT://:19092,CONTROLLER://:9093,PLAINTEXT_HOST://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     ports: ["8080:8080"]
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
     depends_on: [kafka]
 ```
 
@@ -1650,7 +1655,7 @@ import { makeStrategy, makeMq } from './config.js';
 import { ReservationService } from './domain/reservation-service.js';
 
 async function main(): Promise<void> {
-  const pool = makePool(process.env.PG_URL ?? 'postgres://ticket:ticket@localhost:5432/ticket');
+  const pool = makePool(process.env.PG_URL ?? 'postgres://ticket:ticket@localhost:5433/ticket');
   const redis = makeRedis(process.env.REDIS_URL ?? 'redis://localhost:6379');
   await migrate(pool);
 

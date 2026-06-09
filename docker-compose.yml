@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: ticket
       POSTGRES_PASSWORD: ticket
       POSTGRES_DB: ticket
-    ports: ["5432:5432"]
+    ports: ["5433:5432"]   # 호스트 5432는 기존 컨테이너와 충돌 가능 → 5433 사용
   redis:
     image: redis:7
     ports: ["6379:6379"]
