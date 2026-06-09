@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      // redlock v5-beta의 package.json "exports"에 types 조건이 없어 tsc가 타입을 못 찾음.
+      // 실제 선언 파일로 직접 매핑해 우회(런타임은 node 기본 해석을 사용하므로 영향 없음).
+      "redlock": ["node_modules/redlock/dist/index.d.ts"]
+    }
+  },
+  "include": ["src", "test", "bench"]
+}
