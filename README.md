@@ -74,3 +74,4 @@ STOCK=100 N=1000 npx tsx bench/load-reserve.ts
 - 설계 spec: [`docs/superpowers/specs/2026-06-09-ticket-concurrency-mq-design.md`](docs/superpowers/specs/2026-06-09-ticket-concurrency-mq-design.md)
 - 구현 계획: [`docs/superpowers/plans/2026-06-09-ticket-concurrency-mq.md`](docs/superpowers/plans/2026-06-09-ticket-concurrency-mq.md)
 - 실험 결과: [`docs/RESULTS.md`](docs/RESULTS.md)
+- 전략별 문제점 정리: [`docs/STRATEGY-TRADEOFFS.md`](docs/STRATEGY-TRADEOFFS.md)
