@@ -34,7 +34,10 @@ export async function assertConcurrencyContract(opts: {
   expect(reserved).toBe(persisted);
 
   if (allowOversell) {
-    expect(reserved).toBeGreaterThan(stock); // naive: 오버셀 발생 증명
+    // naive: 오버셀 발생 증명. 이 단언은 "확률적"이다 — 레이스가 안 잡히면 reserved == stock이
+    // 되어 실패할 수 있다(전략이 고쳐진 게 아니라 동시성이 낮았던 것). stock 대비 concurrency를
+    // 충분히 크게 줘서(예: 50 vs 500) 거의 항상 재현되게 한다. 간헐 실패 시 concurrency를 올린다.
+    expect(reserved).toBeGreaterThan(stock);
   } else {
     expect(reserved).toBe(stock); // 락 전략: 정확히 재고만큼만
   }
