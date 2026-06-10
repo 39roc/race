@@ -15,13 +15,18 @@ setGlobalDispatcher(
 
 async function post(path: string, body: unknown): Promise<{ status: number; ms: number }> {
   const start = performance.now();
-  const res = await request(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  await res.body.text();
-  return { status: res.statusCode, ms: performance.now() - start };
+  try {
+    const res = await request(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    await res.body.text();
+    return { status: res.statusCode, ms: performance.now() - start };
+  } catch {
+    // 클라이언트 측 연결 오류(소켓 끊김 등)도 실패로 집계(전체 부하가 중단되지 않게).
+    return { status: 0, ms: performance.now() - start };
+  }
 }
 
 function pct(sorted: number[], p: number): number {
@@ -40,13 +45,15 @@ async function main(): Promise<void> {
 
   const reserved = results.filter((r) => r.status === 201).length;
   const soldOut = results.filter((r) => r.status === 409).length;
+  // 201(예약)·409(품절)이 아닌 모든 응답(서버 500, 락 획득 타임아웃, 연결 오류 등).
+  const failed = results.filter((r) => r.status !== 201 && r.status !== 409).length;
   const lat = results.map((r) => r.ms).sort((a, b) => a - b);
   const oversell = Math.max(0, reserved - STOCK);
 
   console.log(JSON.stringify({
     strategy: process.env.STRATEGY ?? '(server-side)',
     stock: STOCK, requests: N,
-    reserved, soldOut, oversell,
+    reserved, soldOut, failed, oversell,
     invariantOk: oversell === 0,
     throughputRps: Math.round((N / wall) * 1000),
     latencyMs: { p50: Math.round(pct(lat, 50)), p95: Math.round(pct(lat, 95)), p99: Math.round(pct(lat, 99)) },
